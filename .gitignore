@@ -1,10 +1,38 @@
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+*$py.class
+
+# Virtual environments and package artifacts
+.env
+.envrc
+.venv/
+env/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Test, cache, coverage, and notebook artifacts
 .pytest_cache/
 pytest-cache-files-*/
+.cache/
+.coverage
+.coverage.*
+htmlcov/
+.ipynb_checkpoints/
+.mypy_cache/
+.ruff_cache/
 
+# IDE/local files
+.vscode/
+.idea/
+tempCodeRunnerFile.py
+
+# Project data and generated artifacts
 data/raw/*.csv
 data/raw/*.txt
 data/processed/*.csv
-
 *.zip

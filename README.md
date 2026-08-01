@@ -48,6 +48,12 @@ Generated outputs:
 python -m pytest
 ```
 
+If Windows temp permissions are locked down, run:
+
+```bash
+python -m pytest --basetemp C:\tmp\pytest-bases-assis2 -o cache_dir=C:\tmp\pytest-cache-assis2
+```
+
 The tests use synthetic data, so they can run even before the Kaggle files are added.
 
 ## Key Assumptions
