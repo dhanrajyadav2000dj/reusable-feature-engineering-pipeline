@@ -39,3 +39,6 @@ data/processed/*.csv
 !data/processed/feature_ready_test.csv
 !data/processed/target_train.csv
 *.zip
+test_runtime/
+pytest_tmp/
+tmppytest-bases-assis2/

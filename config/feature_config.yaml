@@ -13,6 +13,9 @@ excluded_columns:
 
 scaling: standard
 rare_category_threshold: 0.01
+numeric_imputation_strategy: median
+categorical_imputation_strategy: most_frequent
+ordinary_missing_category: Missing
 
 skewed_numeric_features:
   - GrLivArea
@@ -21,6 +24,9 @@ skewed_numeric_features:
 cap_quantiles:
   GrLivArea: 0.995
   LotArea: 0.995
+outlier_policy:
+  GrLivArea: cap_at_training_quantile_and_log1p
+  LotArea: cap_at_training_quantile_and_log1p
 
 nominal_as_categorical:
   - MSSubClass
@@ -99,3 +105,4 @@ derived_features:
   has_pool: true
   quality_condition_interaction: true
   sale_season: true
+

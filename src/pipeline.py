@@ -87,7 +87,7 @@ def run_pipeline(config: dict) -> dict:
     train = pd.read_csv(config["paths"]["train_csv"])
     test = pd.read_csv(config["paths"]["test_csv"])
     raw_info = inspect_raw(train, test, config["target_column"])
-    schema_messages = validate_schema(train, test, config["target_column"], config["id_column"])
+    schema_messages = validate_schema(train, test, config["target_column"], config["id_column"], config)
 
     y_train = train[config["target_column"]].copy()
     train_features = train.drop(columns=[config["target_column"]])
@@ -111,15 +111,15 @@ def run_pipeline(config: dict) -> dict:
     x_test.index = test.index
     feature_names = list(x_train.columns)
 
-    validation_messages = validate_outputs(x_train, x_test, y_train, config)
+    validation_messages = validate_outputs(x_train, x_test, y_train, config, len(train), len(test))
     processed_dir = Path(config["paths"]["processed_dir"])
     reports_dir = Path(config["paths"]["reports_dir"])
     processed_dir.mkdir(parents=True, exist_ok=True)
     reports_dir.mkdir(parents=True, exist_ok=True)
 
-    x_train.assign(SalePrice=y_train.values).to_csv(processed_dir / "feature_ready_train.csv", index=False)
+    x_train.to_csv(processed_dir / "feature_ready_train.csv", index=False)
     x_test.to_csv(processed_dir / "feature_ready_test.csv", index=False)
-    pd.DataFrame({"SalePrice": y_train}).to_csv(processed_dir / "target_train.csv", index=False)
+    pd.DataFrame({config["target_column"]: y_train}).to_csv(processed_dir / "target_train.csv", index=False)
 
     report_lines = [
         f"- Raw train shape: {raw_info['train_shape']}",
@@ -127,8 +127,18 @@ def run_pipeline(config: dict) -> dict:
         f"- One row definition: {raw_info['one_row_definition']}",
         f"- Top train missing counts: {raw_info['train_missing']}",
         f"- Top test missing counts: {raw_info['test_missing']}",
+        f"- Train column names: {raw_info['train_columns']}",
+        f"- Test column names: {raw_info['test_columns']}",
+        f"- Train data types: {raw_info['train_dtypes']}",
+        f"- Test data types: {raw_info['test_dtypes']}",
         f"- Train duplicate rows: {raw_info['train_duplicates']}",
         f"- Test duplicate rows: {raw_info['test_duplicates']}",
+        f"- Train duplicate IDs: {int(train[config['id_column']].duplicated().sum())}",
+        f"- Test duplicate IDs: {int(test[config['id_column']].duplicated().sum())}",
+        f"- Target column present in train: {config['target_column'] in train.columns}",
+        f"- Target column absent from test: {config['target_column'] not in test.columns}",
+        f"- Row count before preprocessing: train={len(train)}, test={len(test)}",
+        f"- Row count after preprocessing: train={len(x_train)}, test={len(x_test)}",
         f"- Numeric source columns after derivation: {len(numeric_cols)}",
         f"- Categorical source columns after derivation: {len(categorical_cols)}",
         f"- Encoded final feature count: {x_train.shape[1]}",
@@ -142,6 +152,11 @@ def run_pipeline(config: dict) -> dict:
         *skew_report,
         "- High `GrLivArea` records are retained but capped using the training-only quantile, plus a log feature is exported.",
         "- Garage year values after sale year or before 1800 are treated as missing before age calculation.",
+        "",
+        "## Year and Derived Feature Range Checks",
+        "- Age features are computed from `YrSold`, never the current calendar year.",
+        "- Negative age values are clipped to zero after suspicious garage years are set missing.",
+        "- Area, bathroom, and binary flag derived features are validated by final numeric, missing, infinite, and row-count checks.",
     ]
     write_report(reports_dir / "validation_report.md", "Validation Report", report_lines)
     write_feature_dictionary(reports_dir / "feature_dictionary.md", feature_names, numeric_cols, categorical_cols)
@@ -159,6 +174,12 @@ def write_feature_dictionary(path: Path, feature_names: list[str], numeric_cols:
         "| Derived age features | `YrSold`, build/remodel/garage year columns | Derived numeric | Sale-year minus event year; impossible garage years set missing | Numeric imputation after derivation | Age at sale, never current-year age |",
         "| Derived amenity flags | Garage, basement, fireplace, pool source fields | Derived indicator | Presence converted to 0/1 | Missing area/count treated as absent for flag only | Availability of major property amenities |",
         "| `SaleSeason` group | `MoSold` | Derived categorical | Month bucketed into season then one-hot encoded | Imputed if missing | Sale timing; assumes prediction point includes sale timing fields |",
+        "| `HouseAgeAtSale` | `YrSold`, `YearBuilt` | Derived numeric | `YrSold - YearBuilt`, clipped at 0, scaled in final matrix | Median if missing after derivation | Property age at sale; future-available when sale year is known |",
+        "| `RemodelAgeAtSale` | `YrSold`, `YearRemodAdd` | Derived numeric | `YrSold - YearRemodAdd`, clipped at 0, scaled in final matrix | Median if missing after derivation | Years since remodel at sale; future-available when sale year is known |",
+        "| `GarageAgeAtSale` | `YrSold`, `GarageYrBlt` | Derived numeric | Invalid garage years set missing, then `YrSold - GarageYrBlt`, clipped at 0, scaled | Median if missing after derivation | Garage age at sale; source availability caveat for missing garage year |",
+        "| `TotalSquareFeet` | `TotalBsmtSF`, `1stFlrSF`, `2ndFlrSF` | Derived numeric | Sum of available floor-area fields, scaled | Missing source area treated as 0 for sum | Overall finished and basement area |",
+        "| `TotalBathrooms` | `FullBath`, `HalfBath`, `BsmtFullBath`, `BsmtHalfBath` | Derived numeric | Full baths plus 0.5 half baths, scaled | Missing source counts treated as 0 for sum | Total bathroom capacity |",
+        "| `TotalPorchArea` | `OpenPorchSF`, `EnclosedPorch`, `3SsnPorch`, `ScreenPorch` | Derived numeric | Sum of porch areas, scaled | Missing source area treated as 0 for sum | Outdoor/porch amenity size |",
         "",
         f"Final encoded feature count: {len(feature_names)}",
     ]
@@ -176,4 +197,5 @@ def write_leakage_review(path: Path) -> None:
         "- High `GrLivArea` is not dropped; it is capped by a training-derived threshold and logged to keep scoring row counts stable.",
     ]
     write_report(path, "Leakage Review", lines)
+
 

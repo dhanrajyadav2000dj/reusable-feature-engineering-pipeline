@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
@@ -6,7 +8,7 @@ from src.pipeline import run_pipeline
 from src.validation import validate_schema
 
 
-def sample_train_test(tmp_path):
+def sample_train_test(runtime_dir):
     cols = {
         "Id": [1, 2, 3, 4],
         "MSSubClass": [60, 20, 60, 70],
@@ -44,16 +46,17 @@ def sample_train_test(tmp_path):
     train["SalePrice"] = [208500, 181500, 223500, 140000]
     test = pd.DataFrame(cols).drop(index=[3]).reset_index(drop=True)
     test["Id"] = [101, 102, 103]
-    train_path = tmp_path / "train.csv"
-    test_path = tmp_path / "test.csv"
+    runtime_dir.mkdir(parents=True, exist_ok=True)
+    train_path = runtime_dir / "train.csv"
+    test_path = runtime_dir / "test.csv"
     train.to_csv(train_path, index=False)
     test.to_csv(test_path, index=False)
     return train_path, test_path
 
 
-def config_for(tmp_path, train_path, test_path):
+def config_for(runtime_dir, train_path, test_path):
     return {
-        "paths": {"train_csv": str(train_path), "test_csv": str(test_path), "processed_dir": str(tmp_path / "processed"), "reports_dir": str(tmp_path / "reports")},
+        "paths": {"train_csv": str(train_path), "test_csv": str(test_path), "processed_dir": str(runtime_dir / "processed"), "reports_dir": str(runtime_dir / "reports")},
         "target_column": "SalePrice",
         "id_column": "Id",
         "excluded_columns": ["Id", "SalePrice"],
@@ -62,6 +65,7 @@ def config_for(tmp_path, train_path, test_path):
         "skewed_numeric_features": ["LotArea"],
         "domain_missing_as_none": ["GarageType", "BsmtQual"],
         "ordinal_mappings": {"ExterQual": {"TA": 3, "Gd": 4}, "BsmtQual": {"NA": 0, "TA": 3, "Gd": 4}},
+        "nominal_as_categorical": ["MSSubClass", "MSZoning", "Neighborhood", "SaleType", "SaleCondition", "GarageType"],
     }
 
 
@@ -80,20 +84,55 @@ def test_schema_validation_behavior():
         validate_schema(train, test, "SalePrice", "Id")
 
 
-def test_full_pipeline_alignment_and_no_leakage(tmp_path):
-    train_path, test_path = sample_train_test(tmp_path)
-    result = run_pipeline(config_for(tmp_path, train_path, test_path))
+def test_schema_rejects_duplicate_id():
+    train = pd.DataFrame({"Id": [1, 1], "A": [1, 2], "SalePrice": [10, 20]})
+    test = pd.DataFrame({"Id": [3, 4], "A": [1, 2]})
+    with pytest.raises(ValueError, match="Duplicate IDs"):
+        validate_schema(train, test, "SalePrice", "Id")
+
+
+def test_schema_rejects_target_in_future():
+    train = pd.DataFrame({"Id": [1], "A": [1], "SalePrice": [10]})
+    test = pd.DataFrame({"Id": [2], "A": [1], "SalePrice": [9]})
+    with pytest.raises(ValueError, match="must not include target"):
+        validate_schema(train, test, "SalePrice", "Id")
+
+
+def test_schema_rejects_dtype_mismatch():
+    train = pd.DataFrame({"Id": [1], "A": [1], "SalePrice": [10]})
+    test = pd.DataFrame({"Id": [2], "A": ["one"]})
+    with pytest.raises(ValueError, match="data type mismatch"):
+        validate_schema(train, test, "SalePrice", "Id")
+
+
+def test_full_pipeline_alignment_and_no_leakage():
+    runtime_dir = Path("test_runtime/full_pipeline")
+    train_path, test_path = sample_train_test(runtime_dir)
+    config = config_for(runtime_dir, train_path, test_path)
+    result = run_pipeline(config)
     assert list(result["x_train"].columns) == list(result["x_test"].columns)
     assert "SalePrice" not in result["x_train"].columns
     assert "Id" not in result["x_train"].columns
     assert "MSSubClass" not in [c for c in result["x_train"].columns if c == "MSSubClass"]
     assert result["x_train"].isna().sum().sum() == 0
+    assert result["x_test"].isna().sum().sum() == 0
+    assert all(pd.api.types.is_numeric_dtype(result["x_train"][c]) for c in result["x_train"].columns)
+    assert len(result["x_train"]) == 4
+    assert len(result["x_test"]) == 3
+    assert Path(config["paths"]["processed_dir"], "feature_ready_train.csv").exists()
+    assert Path(config["paths"]["processed_dir"], "feature_ready_test.csv").exists()
+    assert Path(config["paths"]["processed_dir"], "target_train.csv").exists()
+    exported_train = pd.read_csv(Path(config["paths"]["processed_dir"], "feature_ready_train.csv"))
+    assert "SalePrice" not in exported_train.columns
+    assert "Id" not in exported_train.columns
 
 
-def test_unknown_category_handling(tmp_path):
-    train_path, test_path = sample_train_test(tmp_path)
+def test_unknown_category_handling():
+    runtime_dir = Path("test_runtime/unknown_category")
+    train_path, test_path = sample_train_test(runtime_dir)
     test = pd.read_csv(test_path)
     test.loc[0, "Neighborhood"] = "NeverSeen"
     test.to_csv(test_path, index=False)
-    result = run_pipeline(config_for(tmp_path, train_path, test_path))
+    result = run_pipeline(config_for(runtime_dir, train_path, test_path))
     assert result["x_test"].shape[1] == result["x_train"].shape[1]
+
