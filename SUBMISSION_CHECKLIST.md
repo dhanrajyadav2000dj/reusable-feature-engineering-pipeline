@@ -1,6 +1,6 @@
 # Submission Checklist
 
-## Verified
+## Verified Complete
 
 - Reusable script entry point: `run_feature_pipeline.py`
 - Config layer: `config/feature_config.yaml`
@@ -8,40 +8,37 @@
 - Executable tests: `tests/test_features.py`
 - README with setup, run instructions, assumptions, limitations, and extension guidance
 - Leakage review: `reports/leakage_review.md`
-- Feature dictionary template/generated report location: `reports/feature_dictionary.md`
-- Validation report template/generated report location: `reports/validation_report.md`
+- Feature dictionary: `reports/feature_dictionary.md`
+- Validation report: `reports/validation_report.md`
 - Supplemental test plan: `reports/supplemental_test_plan.md`
-- Tests pass with:
+- Feature-ready train dataset: `data/processed/feature_ready_train.csv`
+- Feature-ready future/test dataset: `data/processed/feature_ready_test.csv`
+- Training target artifact: `data/processed/target_train.csv`
+
+## Real Data Run Evidence
+
+The pipeline was run against Ames/House Prices train and test CSV files.
+
+- Raw train shape: `(1460, 81)`
+- Raw test shape: `(1459, 80)`
+- Final train feature shape: `(1460, 224)`
+- Final test feature shape: `(1459, 224)`
+- Train/test feature columns align: yes
+- Final feature matrices are numeric-only: yes
+- Missing values in final feature matrices: none
+- `SalePrice` excluded from feature matrix: yes
+- `Id` excluded from feature matrix: yes
+
+## Test Evidence
+
+Tests passed with:
 
 ```bash
 python -m pytest --basetemp C:\tmp\pytest-bases-assis2 -o cache_dir=C:\tmp\pytest-cache-assis2
 ```
 
-## Required Before Final Submission
+Result: `4 passed`.
 
-Add the Kaggle House Prices files:
+## Note
 
-```text
-data/raw/train.csv
-data/raw/test.csv
-data/raw/data_description.txt
-```
-
-Then run:
-
-```bash
-python run_feature_pipeline.py
-```
-
-This will generate:
-
-- `data/processed/feature_ready_train.csv`
-- `data/processed/feature_ready_test.csv`
-- `data/processed/target_train.csv`
-- refreshed `reports/validation_report.md`
-- refreshed `reports/feature_dictionary.md`
-- refreshed `reports/leakage_review.md`
-
-## Current Status
-
-The code has been tested with synthetic data and passes. The real feature-ready CSV artifacts cannot be verified or generated until the Kaggle raw CSV files are added locally.
+Raw Kaggle CSV files are not committed to the repository. The processed CSV deliverables and generated reports are committed for assessment review.

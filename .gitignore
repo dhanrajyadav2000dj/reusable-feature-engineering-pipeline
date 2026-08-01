@@ -31,8 +31,11 @@ htmlcov/
 .idea/
 tempCodeRunnerFile.py
 
-# Project data and generated artifacts
+# Raw source data stays local; processed assignment deliverables are committed.
 data/raw/*.csv
 data/raw/*.txt
 data/processed/*.csv
+!data/processed/feature_ready_train.csv
+!data/processed/feature_ready_test.csv
+!data/processed/target_train.csv
 *.zip
