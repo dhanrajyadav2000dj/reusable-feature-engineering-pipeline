@@ -1,0 +1,101 @@
+paths:
+  train_csv: data/raw/train.csv
+  test_csv: data/raw/test.csv
+  processed_dir: data/processed
+  reports_dir: reports
+
+target_column: SalePrice
+id_column: Id
+
+excluded_columns:
+  - Id
+  - SalePrice
+
+scaling: standard
+rare_category_threshold: 0.01
+
+skewed_numeric_features:
+  - GrLivArea
+  - LotArea
+
+cap_quantiles:
+  GrLivArea: 0.995
+  LotArea: 0.995
+
+nominal_as_categorical:
+  - MSSubClass
+  - MSZoning
+  - Street
+  - Alley
+  - LotShape
+  - LandContour
+  - Utilities
+  - LotConfig
+  - LandSlope
+  - Neighborhood
+  - Condition1
+  - Condition2
+  - BldgType
+  - HouseStyle
+  - RoofStyle
+  - RoofMatl
+  - Exterior1st
+  - Exterior2nd
+  - MasVnrType
+  - Foundation
+  - Heating
+  - CentralAir
+  - Electrical
+  - Functional
+  - GarageType
+  - GarageFinish
+  - PavedDrive
+  - MiscFeature
+  - SaleType
+  - SaleCondition
+
+ordinal_mappings:
+  ExterQual: {Po: 1, Fa: 2, TA: 3, Gd: 4, Ex: 5}
+  ExterCond: {Po: 1, Fa: 2, TA: 3, Gd: 4, Ex: 5}
+  BsmtQual: {NA: 0, Po: 1, Fa: 2, TA: 3, Gd: 4, Ex: 5}
+  BsmtCond: {NA: 0, Po: 1, Fa: 2, TA: 3, Gd: 4, Ex: 5}
+  BsmtExposure: {NA: 0, No: 1, Mn: 2, Av: 3, Gd: 4}
+  BsmtFinType1: {NA: 0, Unf: 1, LwQ: 2, Rec: 3, BLQ: 4, ALQ: 5, GLQ: 6}
+  BsmtFinType2: {NA: 0, Unf: 1, LwQ: 2, Rec: 3, BLQ: 4, ALQ: 5, GLQ: 6}
+  HeatingQC: {Po: 1, Fa: 2, TA: 3, Gd: 4, Ex: 5}
+  KitchenQual: {Po: 1, Fa: 2, TA: 3, Gd: 4, Ex: 5}
+  FireplaceQu: {NA: 0, Po: 1, Fa: 2, TA: 3, Gd: 4, Ex: 5}
+  GarageQual: {NA: 0, Po: 1, Fa: 2, TA: 3, Gd: 4, Ex: 5}
+  GarageCond: {NA: 0, Po: 1, Fa: 2, TA: 3, Gd: 4, Ex: 5}
+  PoolQC: {NA: 0, Fa: 2, TA: 3, Gd: 4, Ex: 5}
+  Fence: {NA: 0, MnWw: 1, GdWo: 2, MnPrv: 3, GdPrv: 4}
+
+domain_missing_as_none:
+  - Alley
+  - BsmtQual
+  - BsmtCond
+  - BsmtExposure
+  - BsmtFinType1
+  - BsmtFinType2
+  - FireplaceQu
+  - GarageType
+  - GarageFinish
+  - GarageQual
+  - GarageCond
+  - PoolQC
+  - Fence
+  - MiscFeature
+
+derived_features:
+  house_age: true
+  remodel_age: true
+  garage_age: true
+  total_square_feet: true
+  total_bathrooms: true
+  total_porch_area: true
+  has_garage: true
+  has_basement: true
+  has_fireplace: true
+  has_pool: true
+  quality_condition_interaction: true
+  sale_season: true
